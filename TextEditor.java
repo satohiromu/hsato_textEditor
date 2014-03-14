@@ -32,14 +32,10 @@ import java.awt.datatransfer.Transferable;
 import javax.swing.TransferHandler;
 import javax.swing.SwingUtilities;
 import java.awt.Rectangle;
-import javax.swing.JTextField;
 import java.awt.datatransfer.*;
 import java.awt.dnd.*;
 import java.util.*;
-import java.io.*;
-import javax.swing.JTree;
 import javax.swing.JComponent;
-import javax.swing.tree.TreePath;
 
 public class TextEditor extends JFrame implements ActionListener{
 	
@@ -50,7 +46,8 @@ public class TextEditor extends JFrame implements ActionListener{
 	int selected;
 	String textTitle = "No title";
 	boolean fileSavedCheck = true;
-	final String saveCheckMsg = "The contents of the file has changed.\nDo you want to save it?";
+	//final String saveCheckMsg = "The contents of the file has changed.\nDo you want to save it?";
+	final String saveCheckMsg = "ファイルの内容が変更されています。\n保存しますか？";
 	String textData = "";
 	
 	// Constructor
@@ -198,22 +195,21 @@ public class TextEditor extends JFrame implements ActionListener{
 			selected = fileChooser.showOpenDialog(this);
 			if(selected == fileChooser.APPROVE_OPTION){
 				file = fileChooser.getSelectedFile();
-				textTitle = file.getName();
-				setFrameTitle(textTitle);
-				filePath = file.getAbsolutePath();
-				System.out.println(filePath);
 				fileCheck = true;
+			}else{
+				return;
 			}
 		}else{
 			file = new File(fileName);
-			textTitle = file.getName();
-			setFrameTitle(textTitle);
-			filePath = file.getAbsolutePath();
 			fileCheck = true;
 		}
 		
 		try{
 			if(fileCheck){
+				textTitle = file.getName();
+                                setFrameTitle(textTitle);
+                                filePath = file.getAbsolutePath();
+
 				textArea.setText("");
 				BufferedReader br = new BufferedReader(new FileReader(file));
 				while((textLine = br.readLine()) != null){
@@ -236,7 +232,6 @@ public class TextEditor extends JFrame implements ActionListener{
 	// file save
 	public void saveFile(){
 		JFileChooser fileChooser = new JFileChooser(filePath);
-		System.out.println(filePath);
 		File file = null;
 		BufferedWriter bw;
 
@@ -255,7 +250,7 @@ public class TextEditor extends JFrame implements ActionListener{
 					bw.close();
 					fileSavedCheck = true;
 				}
-			}else{ // upgrade
+			}else{ // update
 				file = new File(filePath);
 				bw = new BufferedWriter(new FileWriter(file));
 				bw.write(textArea.getText());
