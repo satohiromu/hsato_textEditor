@@ -1,6 +1,5 @@
 #!/bin/sh
 
-echo "buildding"
 javac TextEditor.java
 result=$?
 
