@@ -1,11 +1,11 @@
 #!/bin/sh
 
-javac TextEditor.java
+javac -classpath .:./lib/* TextEditor.java
 result=$?
 
 if test ${result} -eq 0
 then
-	java TextEditor
+	java -classpath .:./lib/* TextEditor
 else
 	echo "Failed to compile"
 fi

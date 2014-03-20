@@ -36,6 +36,7 @@ import java.awt.datatransfer.*;
 import java.awt.dnd.*;
 import java.util.*;
 import javax.swing.JComponent;
+import org.mozilla.universalchardet.UniversalDetector;
 
 public class TextEditor extends JFrame implements ActionListener{
 	
@@ -189,6 +190,8 @@ public class TextEditor extends JFrame implements ActionListener{
 		String textLine;
 		File file = null;
 		boolean fileCheck = false;
+		String encodingCheck;
+		BufferedReader br = null;
 
 		if(fileName.equals("")){
 			JFileChooser fileChooser = new JFileChooser(filePath);
@@ -201,17 +204,34 @@ public class TextEditor extends JFrame implements ActionListener{
 			}
 		}else{
 			file = new File(fileName);
-			fileCheck = true;
+			String[] checkDir  = file.list();
+			if(checkDir == null){ // file or directory check
+				fileCheck = true;
+			}
 		}
 		
 		try{
 			if(fileCheck){
+				textArea.setText("");
 				textTitle = file.getName();
                                 setFrameTitle(textTitle);
                                 filePath = file.getAbsolutePath();
 
-				textArea.setText("");
-				BufferedReader br = new BufferedReader(new FileReader(file));
+				encodingCheck = getEncoding(file);
+				System.out.println("encode : " + encodingCheck);
+
+				String[] encodeList = {"UTF-8", "UTF-16LE", "EUC-JP","SHIFT_JIS"};
+				for(int i=0;i<encodeList.length;i++){
+                                	if(encodingCheck.equals(encodeList[i])){
+System.out.println("true");
+                                        	br = new BufferedReader(new InputStreamReader(new FileInputStream(file), encodeList[i]));
+						break;
+					}else{
+System.out.println("false");
+						br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+					}
+				}	
+
 				while((textLine = br.readLine()) != null){
 					textArea.append(textLine);
 					textArea.append("\n");
@@ -220,6 +240,8 @@ public class TextEditor extends JFrame implements ActionListener{
 
 				int lastNewLineCount = textArea.getText().length();
 				textArea.replaceRange("", lastNewLineCount-1, lastNewLineCount);
+			}else{
+				System.out.println("ファイルではないため、開くことができません。");
 			}
 		}catch(FileNotFoundException error){
 			System.out.println("FileNotFoundException");
@@ -312,6 +334,29 @@ public class TextEditor extends JFrame implements ActionListener{
 			}
 		}
 	}
+
+       public String getEncoding(File file){
+		String encoding = "";
+		try{
+                	UniversalDetector detector = new UniversalDetector(null);
+                	FileInputStream fis = new FileInputStream(file);
+                	byte[] byteArray = new byte[4096];
+                	int read;
+
+                	while((read = fis.read(byteArray)) > 0 && !detector.isDone()){
+                	        detector.handleData(byteArray, 0, read);
+                	}
+                	detector.dataEnd();
+                	encoding = detector.getDetectedCharset();
+
+		}catch(FileNotFoundException error){
+			System.out.println("file not found");	
+		}catch(IOException error){
+			System.out.println("IO error");
+		}
+		return encoding;
+        }
+
 	
 	public static void main(String[] args){
 //		TextEditor textEditor = new TextEditor();
