@@ -214,25 +214,24 @@ public class TextEditor extends JFrame implements ActionListener{
 			if(fileCheck){
 				textArea.setText("");
 				textTitle = file.getName();
-                                setFrameTitle(textTitle);
-                                filePath = file.getAbsolutePath();
+				setFrameTitle(textTitle);
+				filePath = file.getAbsolutePath();
 
 				encodingCheck = getEncoding(file);
-				System.out.println("encode : " + encodingCheck);
+				//System.out.println("encode : " + encodingCheck);
 
 				String[] encodeList = {"UTF-8", "UTF-16LE", "EUC-JP","SHIFT_JIS"};
 				for(int i=0;i<encodeList.length;i++){
-                                	if(encodingCheck.equals(encodeList[i])){
-System.out.println("true");
-                                        	br = new BufferedReader(new InputStreamReader(new FileInputStream(file), encodeList[i]));
+					if( (encodingCheck != null) && (encodingCheck.equals(encodeList[i]))){
+						br = new BufferedReader(new InputStreamReader(new FileInputStream(file), encodeList[i]));
 						break;
 					}else{
-System.out.println("false");
 						br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
 					}
 				}	
 
 				while((textLine = br.readLine()) != null){
+					//System.out.println("textLine : " + textLine);
 					textArea.append(textLine);
 					textArea.append("\n");
 				}
@@ -338,23 +337,22 @@ System.out.println("false");
        public String getEncoding(File file){
 		String encoding = "";
 		try{
-                	UniversalDetector detector = new UniversalDetector(null);
-                	FileInputStream fis = new FileInputStream(file);
-                	byte[] byteArray = new byte[4096];
-                	int read;
+				UniversalDetector detector = new UniversalDetector(null);
+				FileInputStream fis = new FileInputStream(file);
+				byte[] byteArray = new byte[4096];
+				int read;
 
-                	while((read = fis.read(byteArray)) > 0 && !detector.isDone()){
-                	        detector.handleData(byteArray, 0, read);
-                	}
-                	detector.dataEnd();
-                	encoding = detector.getDetectedCharset();
-
+				while((read = fis.read(byteArray)) > 0 && !detector.isDone()){
+					detector.handleData(byteArray, 0, read);
+				}
+				detector.dataEnd();
+				encoding = detector.getDetectedCharset();
 		}catch(FileNotFoundException error){
 			System.out.println("file not found");	
 		}catch(IOException error){
 			System.out.println("IO error");
 		}
-		return encoding;
+			return encoding;
         }
 
 	
