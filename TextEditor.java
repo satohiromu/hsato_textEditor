@@ -1,8 +1,10 @@
 //import java.awt.*;
 //import javax.swing.*;
 //import java.awt.event.*;
+//import java util.*;
 
 import java.io.*;
+import java.util.List;
 import java.awt.Container;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -14,6 +16,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowAdapter;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
@@ -24,33 +30,25 @@ import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.JOptionPane;
-
-// テスト用
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
 import javax.swing.TransferHandler;
-import javax.swing.SwingUtilities;
-import java.awt.Rectangle;
-import java.awt.datatransfer.*;
-import java.awt.dnd.*;
-import java.util.*;
 import javax.swing.JComponent;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import org.mozilla.universalchardet.UniversalDetector;
 
 public class TextEditor extends JFrame implements ActionListener{
 	
-	private static TextEditor textEditor;
-	Container contentPane;
-	JTextArea textArea;
-	String filePath = new File("").getAbsolutePath();
-	int selected;
-	String textTitle = "No title";
-	boolean fileSavedCheck = true;
+	private JTextArea textArea;
+	private String filePath = new File("").getAbsolutePath();
+	private String textTitle = "No title";
+	private String textData = "";
+	private String saveMode = "save";
 	//final String saveCheckMsg = "The contents of the file has changed.\nDo you want to save it?";
-	final String saveCheckMsg = "ファイルの内容が変更されています。\n保存しますか？";
-	String textData = "";
-	
+	private final String saveCheckMsg = "ファイルの内容が変更されています。\n保存しますか？";
+	private boolean fileSavedCheck = true;
+	private boolean fileOpendCheck = false;
+
 	// Constructor
 	TextEditor(){
 //		setTitle(textTitle + " - TextEditor");
@@ -81,7 +79,7 @@ public class TextEditor extends JFrame implements ActionListener{
 		JScrollPane scrollPane = new JScrollPane(textArea);
 		textFieldPanel.add(scrollPane);
 		
-		contentPane = getContentPane();
+		Container contentPane = getContentPane();
 		contentPane.add(textFieldPanel, BorderLayout.CENTER);
 	}
 
@@ -148,10 +146,12 @@ public class TextEditor extends JFrame implements ActionListener{
 				openFile("");
 				break;
 			case "Save" :
-				saveFile();
+				saveFile(saveMode);
 				break;
 			case "Save_as" :
-				saveAsFile();
+			//	saveAsFile();
+				saveMode = "saveAs";
+				saveFile(saveMode);
 				break;
 			case "Close" :
 				closeFrame();
@@ -161,18 +161,28 @@ public class TextEditor extends JFrame implements ActionListener{
 
 	// set fileName
 	public void setFrameTitle(String title){
-		this.setTitle(textTitle + " - TextEditor");
+		this.setTitle(title + " - TextEditor");
 	}
+
+/*
+	// set fileChooser FileFilter
+	public void setFileChooserFileFilter(){
+		//JFileChooser fileChooser = new JFileChooser(filePath);
+		fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt", "txt"));
+		fileChooser.setFileFilter(new FileNameExtensionFilter("*.java", "java"));
+		fileChooser.setFileFilter(new FileNameExtensionFilter("*.html", "html"));
+	}
+*/
 
 	// file create
 	public void newFile(){
 
 		if(!fileSavedCheck){
-			int closeCheck = JOptionPane.showConfirmDialog(textEditor, saveCheckMsg, 
+			int closeCheck = JOptionPane.showConfirmDialog(this, saveCheckMsg, 
 				"caution", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
 
 			if(closeCheck == JOptionPane.YES_OPTION){
-				saveFile();
+				saveFile(saveMode);
 			}else if(closeCheck == JOptionPane.CANCEL_OPTION){
 				return;
 			}
@@ -183,6 +193,7 @@ public class TextEditor extends JFrame implements ActionListener{
 		setFrameTitle(textTitle);
 		textArea.setText("");
 		filePath = null;
+		fileOpendCheck = false;
 	}
 
 	// file open
@@ -191,11 +202,15 @@ public class TextEditor extends JFrame implements ActionListener{
 		File file = null;
 		boolean fileCheck = false;
 		String encodingCheck;
-		BufferedReader br = null;
+		//BufferedReader br = null;
 
 		if(fileName.equals("")){
 			JFileChooser fileChooser = new JFileChooser(filePath);
-			selected = fileChooser.showOpenDialog(this);
+			fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt", "txt"));
+			fileChooser.setFileFilter(new FileNameExtensionFilter("*.java", "java"));
+			fileChooser.setFileFilter(new FileNameExtensionFilter("*.html", "html"));
+			
+			int selected = fileChooser.showOpenDialog(this);
 			if(selected == fileChooser.APPROVE_OPTION){
 				file = fileChooser.getSelectedFile();
 				fileCheck = true;
@@ -204,7 +219,7 @@ public class TextEditor extends JFrame implements ActionListener{
 			}
 		}else{
 			file = new File(fileName);
-			String[] checkDir  = file.list();
+			String[] checkDir = file.list();
 			if(checkDir == null){ // file or directory check
 				fileCheck = true;
 			}
@@ -212,26 +227,24 @@ public class TextEditor extends JFrame implements ActionListener{
 		
 		try{
 			if(fileCheck){
+				BufferedReader br = null;
 				textArea.setText("");
 				textTitle = file.getName();
                                 setFrameTitle(textTitle);
                                 filePath = file.getAbsolutePath();
 
 				encodingCheck = getEncoding(file);
-				System.out.println("encode : " + encodingCheck);
+				//System.out.println("encode : " + encodingCheck);
 
 				String[] encodeList = {"UTF-8", "UTF-16LE", "EUC-JP","SHIFT_JIS"};
+				
+				br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
 				for(int i=0;i<encodeList.length;i++){
-                                	if(encodingCheck.equals(encodeList[i])){
-System.out.println("true");
+                                	if(encodingCheck != null && encodingCheck.equals(encodeList[i])){
                                         	br = new BufferedReader(new InputStreamReader(new FileInputStream(file), encodeList[i]));
 						break;
-					}else{
-System.out.println("false");
-						br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
 					}
 				}	
-
 				while((textLine = br.readLine()) != null){
 					textArea.append(textLine);
 					textArea.append("\n");
@@ -240,6 +253,8 @@ System.out.println("false");
 
 				int lastNewLineCount = textArea.getText().length();
 				textArea.replaceRange("", lastNewLineCount-1, lastNewLineCount);
+				
+				fileOpendCheck = true;
 			}else{
 				System.out.println("ファイルではないため、開くことができません。");
 			}
@@ -247,19 +262,33 @@ System.out.println("false");
 			System.out.println("FileNotFoundException");
 		}catch(IOException error){
 			System.out.println("IOException");
+		}catch(NullPointerException error){
+			System.out.println("NullPointer");
 		}
 		textData = textArea.getText();
 	}
 
-	// file save
-	public void saveFile(){
+	// save or saveAs
+	public void saveFile(String saveMode){
 		JFileChooser fileChooser = new JFileChooser(filePath);
+		fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt", "txt"));
+		fileChooser.setFileFilter(new FileNameExtensionFilter("*.java", "java"));
+		fileChooser.setFileFilter(new FileNameExtensionFilter("*.html", "html"));
+
 		File file = null;
-		BufferedWriter bw;
+		String saveCommand = "save";
+		//String saveAs = "saveAs";
 
 		try{
-			if(textTitle.equals("No title")){ // new save
-				selected = fileChooser.showSaveDialog(this);
+			BufferedWriter bw;
+			if(fileOpendCheck && saveMode.equals(saveCommand)){ // update
+                                file = new File(filePath);
+                                bw = new BufferedWriter(new FileWriter(file));
+                                bw.write(textArea.getText());
+                                bw.close();
+                                fileSavedCheck = true;
+			}else{ // save or saveAs
+				int selected = fileChooser.showSaveDialog(this);
 				if(selected == fileChooser.APPROVE_OPTION){
 					file = fileChooser.getSelectedFile();
 					file.createNewFile();
@@ -272,59 +301,27 @@ System.out.println("false");
 					bw.close();
 					fileSavedCheck = true;
 				}
-			}else{ // update
-				file = new File(filePath);
-				bw = new BufferedWriter(new FileWriter(file));
-				bw.write(textArea.getText());
-				bw.close();
-				fileSavedCheck = true;
 			}
-			
 			textData = textArea.getText();
-			
+			fileOpendCheck = true;
 		}catch(FileNotFoundException error){
 			System.out.println("FileNotFoundException");
 		}catch(IOException error){
 			System.out.println("IOException");
 		}
 	}
-
-	// save as
-	public void saveAsFile(){
-		JFileChooser fileChooser = new JFileChooser(filePath);
-		BufferedWriter bw;
-
-		try{
-			selected = fileChooser.showSaveDialog(this);
-			if(selected == fileChooser.APPROVE_OPTION){
-				File file = fileChooser.getSelectedFile();
-				file.createNewFile();
-				textTitle = file.getName();
-				setFrameTitle(textTitle);
-
-				bw = new BufferedWriter(new FileWriter(file));
-				bw.write(textArea.getText());
-				bw.close();
-				filePath = file.getAbsolutePath();
-			}
-		}catch(FileNotFoundException error){
-			System.out.println("FileNotFoundException");
-		}catch(IOException error){
-			System.out.println("IOException");
-		}
-	}
-
+	
 	// file close
 	public void closeFrame(){
 		if(fileSavedCheck){
 			System.exit(0);
 		}else{
 
-			int closeCheck = JOptionPane.showConfirmDialog(textEditor, saveCheckMsg, 
+			int closeCheck = JOptionPane.showConfirmDialog(this, saveCheckMsg, 
 				"caution", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
 
 			if(closeCheck == JOptionPane.YES_OPTION){
-				saveFile();
+				saveFile(saveMode);
 				System.exit(0);
 			}else if(closeCheck == JOptionPane.NO_OPTION){
 				System.exit(0);
@@ -359,8 +356,7 @@ System.out.println("false");
 
 	
 	public static void main(String[] args){
-//		TextEditor textEditor = new TextEditor();
-		textEditor = new TextEditor();
+		TextEditor textEditor = new TextEditor();
 		textEditor.setMenu();
 		textEditor.setTextArea();
 		textEditor.newFile();
