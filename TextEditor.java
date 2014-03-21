@@ -240,17 +240,9 @@ public class TextEditor extends JFrame implements ActionListener{
 				
 				br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
 				for(int i=0;i<encodeList.length;i++){
-<<<<<<< HEAD
                                 	if(encodingCheck != null && encodingCheck.equals(encodeList[i])){
                                         	br = new BufferedReader(new InputStreamReader(new FileInputStream(file), encodeList[i]));
 						break;
-=======
-					if( (encodingCheck != null) && (encodingCheck.equals(encodeList[i]))){
-						br = new BufferedReader(new InputStreamReader(new FileInputStream(file), encodeList[i]));
-						break;
-					}else{
-						br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
->>>>>>> 58f66ad4a73ea0c82cb7535515d321fa19c69e3a
 					}
 				}	
 				while((textLine = br.readLine()) != null){
