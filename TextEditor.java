@@ -5,7 +5,9 @@
 
 import java.io.*;
 import java.util.List;
+import java.awt.Insets;
 import java.awt.Container;
+import javax.swing.BoxLayout;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.KeyEvent;
@@ -16,6 +18,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentAdapter;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.StringSelection;
@@ -37,15 +41,25 @@ import javax.swing.JComponent;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import org.mozilla.universalchardet.UniversalDetector;
 
-public class TextEditor extends JFrame implements ActionListener{
-	
+//import java.awt.Toolkit;
+//import java.awt.datatransfer.Clipboard;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDropEvent;
+
+public class TextEditor extends JFrame implements ActionListener, CaretListener{
+
 	private JTextArea textArea;
+	private int caretPosition = 0;
 	private String filePath = new File("").getAbsolutePath();
 	private String textTitle = "No title";
 	private String textData = "";
 	private String saveMode = "save";
 	//final String saveCheckMsg = "The contents of the file has changed.\nDo you want to save it?";
 	private final String saveCheckMsg = "ファイルの内容が変更されています。\n保存しますか？";
+	private final String updateCheckMsg = "そのファイルは存在します。\n上書きしますか？";
 	private boolean fileSavedCheck = true;
 	private boolean fileOpendCheck = false;
 
@@ -61,21 +75,31 @@ public class TextEditor extends JFrame implements ActionListener{
 
 	public void setTextArea(){
 		JPanel textFieldPanel = new JPanel();
-		textArea = new JTextArea(25, 50);
+		textArea = new JTextArea();
+		textArea.setMaximumSize(new Dimension(Short.MAX_VALUE, Short.MAX_VALUE));
+		textFieldPanel.setLayout(new BoxLayout(textFieldPanel, BoxLayout.PAGE_AXIS));
 
 		// border setting
-		textArea.setBorder(new BevelBorder(BevelBorder.LOWERED));
+	//	textArea.setBorder(new BevelBorder(BevelBorder.LOWERED));
+
+		// margin setting (top, left, bottom, right)
+		textArea.setMargin(new Insets(0, 1, 0, 0));
 
 		// carret setting
 		textArea.setCaretPosition(0);
+		textArea.addCaretListener(this);
+
+		// set tabSize
+		textArea.setTabSize(4);
 
 		// add key event
 		textArea.addKeyListener(new MyKeyEvent());
 
 		// D&D event
-		textArea.setTransferHandler(new MyDropEvent());
+	//	textArea.setTransferHandler(new MyDropEvent(this));
+		textArea.setDropTarget(new MyDropEvent(this));
 
-
+		// scroll
 		JScrollPane scrollPane = new JScrollPane(textArea);
 		textFieldPanel.add(scrollPane);
 		
@@ -146,10 +170,10 @@ public class TextEditor extends JFrame implements ActionListener{
 				openFile("");
 				break;
 			case "Save" :
+				saveMode = "save";
 				saveFile(saveMode);
 				break;
 			case "Save_as" :
-			//	saveAsFile();
 				saveMode = "saveAs";
 				saveFile(saveMode);
 				break;
@@ -192,6 +216,7 @@ public class TextEditor extends JFrame implements ActionListener{
 		textTitle = "No title";
 		setFrameTitle(textTitle);
 		textArea.setText("");
+		textData = "";
 		filePath = null;
 		fileOpendCheck = false;
 	}
@@ -202,13 +227,12 @@ public class TextEditor extends JFrame implements ActionListener{
 		File file = null;
 		boolean fileCheck = false;
 		String encodingCheck;
-		//BufferedReader br = null;
-
+	
 		if(fileName.equals("")){
 			JFileChooser fileChooser = new JFileChooser(filePath);
-			fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt", "txt"));
 			fileChooser.setFileFilter(new FileNameExtensionFilter("*.java", "java"));
 			fileChooser.setFileFilter(new FileNameExtensionFilter("*.html", "html"));
+			fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt", "txt"));
 			
 			int selected = fileChooser.showOpenDialog(this);
 			if(selected == fileChooser.APPROVE_OPTION){
@@ -246,7 +270,6 @@ public class TextEditor extends JFrame implements ActionListener{
 					}
 				}	
 				while((textLine = br.readLine()) != null){
-					//System.out.println("textLine : " + textLine);
 					textArea.append(textLine);
 					textArea.append("\n");
 				}
@@ -256,9 +279,11 @@ public class TextEditor extends JFrame implements ActionListener{
 				textArea.replaceRange("", lastNewLineCount-1, lastNewLineCount);
 				
 				fileOpendCheck = true;
+				fileSavedCheck = true;
 			}else{
 				System.out.println("ファイルではないため、開くことができません。");
 			}
+			textData = textArea.getText();
 		}catch(FileNotFoundException error){
 			System.out.println("FileNotFoundException");
 		}catch(IOException error){
@@ -266,49 +291,74 @@ public class TextEditor extends JFrame implements ActionListener{
 		}catch(NullPointerException error){
 			System.out.println("NullPointer");
 		}
-		textData = textArea.getText();
 	}
 
 	// save or saveAs
 	public void saveFile(String saveMode){
 		JFileChooser fileChooser = new JFileChooser(filePath);
-		fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt", "txt"));
 		fileChooser.setFileFilter(new FileNameExtensionFilter("*.java", "java"));
 		fileChooser.setFileFilter(new FileNameExtensionFilter("*.html", "html"));
+		fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt", "txt"));
 
 		File file = null;
 		String saveCommand = "save";
-		//String saveAs = "saveAs";
 
-		try{
-			BufferedWriter bw;
-			if(fileOpendCheck && saveMode.equals(saveCommand)){ // update
-                                file = new File(filePath);
-                                bw = new BufferedWriter(new FileWriter(file));
-                                bw.write(textArea.getText());
-                                bw.close();
-                                fileSavedCheck = true;
-			}else{ // save or saveAs
-				int selected = fileChooser.showSaveDialog(this);
-				if(selected == fileChooser.APPROVE_OPTION){
-					file = fileChooser.getSelectedFile();
-					file.createNewFile();
-					textTitle = file.getName();
-					setFrameTitle(textTitle);
-					filePath = file.getAbsolutePath();
+		if(fileOpendCheck && saveMode.equals(saveCommand)){ // update
+			file = new File(filePath);
+			writeTextData(file);
+		}else{ // save or saveAs
+			int selected = fileChooser.showSaveDialog(this);
+			if(selected == fileChooser.APPROVE_OPTION){
+				file = fileChooser.getSelectedFile();
+				//textTitle = file.getName();
+				if(!fileChooser.accept(file)){
+					String fileType = new String(fileChooser.getFileFilter().getDescription());
+					String[] splitFileType = fileType.split("\\.");
+					fileType = splitFileType[1];
+					filePath = file.getPath();
+					file = new File(filePath +  "." + fileType);
+				}
 
-					bw = new BufferedWriter(new FileWriter(file));
-					bw.write(textArea.getText());
-					bw.close();
-					fileSavedCheck = true;
+				filePath = file.getAbsolutePath();
+				if(file.exists()){
+					int fileNameCheck = JOptionPane.showConfirmDialog(this, updateCheckMsg,
+						"caution", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+
+					if(fileNameCheck == JOptionPane.YES_OPTION){
+						writeTextData(file);
+						setFrameTitle(file.getName());
+						fileOpendCheck = true;
+					}else if(fileNameCheck == JOptionPane.CANCEL_OPTION){
+						return;
+					}else{
+						saveFile(saveMode);
+					}
+				}else{
+					try{
+						file.createNewFile();
+						writeTextData(file);
+						setFrameTitle(file.getName());
+						fileOpendCheck = true;
+					}catch(IOException error){
+						System.out.println("Faild to create file");
+					}
 				}
 			}
+		}
+	}
+
+	// file write
+	public void writeTextData(File file){
+		try{
+			BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+			bw.write(textArea.getText());
+			bw.close();
+			fileSavedCheck = true;
 			textData = textArea.getText();
-			fileOpendCheck = true;
 		}catch(FileNotFoundException error){
-			System.out.println("FileNotFoundException");
+			System.out.println("File NotFound");
 		}catch(IOException error){
-			System.out.println("IOException");
+			System.out.println("Failed to save file");
 		}
 	}
 	
@@ -332,29 +382,34 @@ public class TextEditor extends JFrame implements ActionListener{
 			}
 		}
 	}
-
+	// get encode
        public String getEncoding(File file){
 		String encoding = "";
 		try{
-				UniversalDetector detector = new UniversalDetector(null);
-				FileInputStream fis = new FileInputStream(file);
-				byte[] byteArray = new byte[4096];
-				int read;
+			UniversalDetector detector = new UniversalDetector(null);
+			FileInputStream fis = new FileInputStream(file);
+			byte[] byteArray = new byte[4096];
+			int read;
 
-				while((read = fis.read(byteArray)) > 0 && !detector.isDone()){
-					detector.handleData(byteArray, 0, read);
-				}
-				detector.dataEnd();
-				encoding = detector.getDetectedCharset();
+			while((read = fis.read(byteArray)) > 0 && !detector.isDone()){
+				detector.handleData(byteArray, 0, read);
+			}
+			detector.dataEnd();
+			encoding = detector.getDetectedCharset();
 		}catch(FileNotFoundException error){
 			System.out.println("file not found");	
 		}catch(IOException error){
 			System.out.println("IO error");
 		}
-			return encoding;
+		return encoding;
         }
 
-	
+	// set caretPosition
+	public void caretUpdate(CaretEvent event){
+		caretPosition = event.getDot();
+	}
+
+	// main
 	public static void main(String[] args){
 		TextEditor textEditor = new TextEditor();
 		textEditor.setMenu();
@@ -363,13 +418,32 @@ public class TextEditor extends JFrame implements ActionListener{
 		textEditor.setVisible(true);
 	}
 
-	// frame close
+	// Window close
 	public class MyWindowEvent extends WindowAdapter{
 		public void windowClosing(WindowEvent event){
 			closeFrame();
 		}
 	}
+/*
+	public class MyResizeEvent extends ComponentAdapter{
+		public void componentResized(ComponentEvent event){
+			Dimension size = getSize();
+			System.out.println("height : " + size.height);			
+			System.out.println("width : " + size.width);
 
+			int height = size.height / 10;
+			int width = size.width / 10;
+
+			System.out.println("height : " + height);
+			System.out.println("width : " + width);
+
+		//	textArea.setColumns(width);
+		//	textArea.setRows(height);			
+
+		}
+	}
+*/
+	// file editing check
 	public class MyKeyEvent extends KeyAdapter{
 		public void keyReleased(KeyEvent event){
 			String text = textArea.getText();
@@ -384,7 +458,54 @@ public class TextEditor extends JFrame implements ActionListener{
 		}
 	}
 
+	// file drop event
+	public class MyDropEvent extends DropTarget{
+		TextEditor textEditor;
+
+                MyDropEvent(TextEditor textEditor){
+                        this.textEditor = textEditor;
+                }
+
+		public void drop(DropTargetDropEvent event){
+			try{
+
+				Transferable transferble = event.getTransferable();
+				if(transferble.isDataFlavorSupported(DataFlavor.javaFileListFlavor)){
+					event.acceptDrop(DnDConstants.ACTION_REFERENCE);
+					if(!fileSavedCheck){
+						int closeCheck = JOptionPane.showConfirmDialog(this.textEditor, saveCheckMsg,
+							"caution", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+
+						if(closeCheck == JOptionPane.YES_OPTION){
+							saveFile(saveMode);
+						}else if(closeCheck == JOptionPane.CANCEL_OPTION){
+							return;
+						}
+						fileSavedCheck = true;
+					}
+					Object obj = transferble.getTransferData(DataFlavor.javaFileListFlavor);
+					List list = (List)obj;
+					openFile(list.get(0).toString());
+				}
+			}catch(UnsupportedFlavorException error){
+				System.out.println("Unsupport");
+			}catch(IOException error){
+				System.out.println("IOExcepton");
+			}
+		}
+	}
+
+/*
 	public class MyDropEvent extends TransferHandler{
+		TextEditor textEditor;
+
+		MyDropEvent(TextEditor textEditor){
+			this.textEditor = textEditor;
+		}
+
+		public int getSourceActions(JComponent c){
+			return COPY_OR_MOVE;
+		}
 
 		@Override
 		public boolean canImport(TransferSupport support){
@@ -396,20 +517,58 @@ public class TextEditor extends JFrame implements ActionListener{
 		}
 
 		@Override
-		public boolean importData(TransferSupport support) {
-			try{
-				Transferable transferble = support.getTransferable();
+		protected Transferable createTransferable(JComponent c){
 
-				Object obj = transferble.getTransferData(DataFlavor.javaFileListFlavor);
-				List list = (List)obj;
-				openFile(list.get(0).toString());
+				String text = textArea.getSelectedText();
 
-		//		for(Object file : list){
-		//			System.out.println(list.get(0));
-		//		}
+				StringSelection ss = new StringSelection(text);
+				System.out.println("ss : " + ss);
 		
-				return true;
-				
+				return ss;
+
+		}
+
+
+
+		@Override
+		public boolean importData(TransferSupport support){
+			try{
+				if(!support.isDrop()){
+					String rangeText = textArea.getSelectedText();
+					Transferable transferble = support.getTransferable();
+					String str = (String)transferble.getTransferData(DataFlavor.stringFlavor);
+
+					if(rangeText == null){
+						textArea.insert(str, caretPosition);
+					}else{
+						int caretRange = caretPosition - rangeText.length();
+				//		int caretRangePosition = caretPosition - caretRange;
+						System.out.println("rangeText : " + rangeText);
+						System.out.println("caretRange : " + caretRange);
+						//System.out.println("caretRangePosition : " + caretRangePosition);
+						System.out.println("caretPosition : " + caretPosition);
+
+						textArea.replaceRange(str, caretRange, caretPosition);
+					}
+					return true;
+				}else{
+					if(!fileSavedCheck){
+						int closeCheck = JOptionPane.showConfirmDialog(this.textEditor, saveCheckMsg,
+							"caution", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+
+						if(closeCheck == JOptionPane.YES_OPTION){
+							saveFile(saveMode);
+						}else if(closeCheck == JOptionPane.CANCEL_OPTION){
+							return false;
+						}
+						fileSavedCheck = true;
+					}
+					Transferable transferble = support.getTransferable();
+
+					Object obj = transferble.getTransferData(DataFlavor.javaFileListFlavor);
+					List list = (List)obj;
+					openFile(list.get(0).toString());
+					return true;			
 			}catch(UnsupportedFlavorException error){
 				return false;
 			}catch(IOException error){
@@ -419,7 +578,10 @@ public class TextEditor extends JFrame implements ActionListener{
 
 		@Override
 		protected void exportDone(JComponent c, Transferable data, int action) {
-
+			//System.out.println("Jcomp : " + c);
+			//System.out.priTransferable transferble = support.getTransferable();
+			//System.out.println("action : " + action);
 		}
 	}
+*/
 }
