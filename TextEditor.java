@@ -24,6 +24,9 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDropEvent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
@@ -39,15 +42,9 @@ import javax.swing.JOptionPane;
 import javax.swing.TransferHandler;
 import javax.swing.JComponent;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import org.mozilla.universalchardet.UniversalDetector;
-
-//import java.awt.Toolkit;
-//import java.awt.datatransfer.Clipboard;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetDropEvent;
+import org.mozilla.universalchardet.UniversalDetector;
 
 public class TextEditor extends JFrame implements ActionListener, CaretListener{
 
@@ -187,16 +184,6 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 	public void setFrameTitle(String title){
 		this.setTitle(title + " - TextEditor");
 	}
-
-/*
-	// set fileChooser FileFilter
-	public void setFileChooserFileFilter(){
-		//JFileChooser fileChooser = new JFileChooser(filePath);
-		fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt", "txt"));
-		fileChooser.setFileFilter(new FileNameExtensionFilter("*.java", "java"));
-		fileChooser.setFileFilter(new FileNameExtensionFilter("*.html", "html"));
-	}
-*/
 
 	// file create
 	public void newFile(){
@@ -424,25 +411,7 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 			closeFrame();
 		}
 	}
-/*
-	public class MyResizeEvent extends ComponentAdapter{
-		public void componentResized(ComponentEvent event){
-			Dimension size = getSize();
-			System.out.println("height : " + size.height);			
-			System.out.println("width : " + size.width);
 
-			int height = size.height / 10;
-			int width = size.width / 10;
-
-			System.out.println("height : " + height);
-			System.out.println("width : " + width);
-
-		//	textArea.setColumns(width);
-		//	textArea.setRows(height);			
-
-		}
-	}
-*/
 	// file editing check
 	public class MyKeyEvent extends KeyAdapter{
 		public void keyReleased(KeyEvent event){
@@ -494,94 +463,4 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 			}
 		}
 	}
-
-/*
-	public class MyDropEvent extends TransferHandler{
-		TextEditor textEditor;
-
-		MyDropEvent(TextEditor textEditor){
-			this.textEditor = textEditor;
-		}
-
-		public int getSourceActions(JComponent c){
-			return COPY_OR_MOVE;
-		}
-
-		@Override
-		public boolean canImport(TransferSupport support){
-			
-			if(!support.isDrop()){
-				return false;
-			}
-			return true;
-		}
-
-		@Override
-		protected Transferable createTransferable(JComponent c){
-
-				String text = textArea.getSelectedText();
-
-				StringSelection ss = new StringSelection(text);
-				System.out.println("ss : " + ss);
-		
-				return ss;
-
-		}
-
-
-
-		@Override
-		public boolean importData(TransferSupport support){
-			try{
-				if(!support.isDrop()){
-					String rangeText = textArea.getSelectedText();
-					Transferable transferble = support.getTransferable();
-					String str = (String)transferble.getTransferData(DataFlavor.stringFlavor);
-
-					if(rangeText == null){
-						textArea.insert(str, caretPosition);
-					}else{
-						int caretRange = caretPosition - rangeText.length();
-				//		int caretRangePosition = caretPosition - caretRange;
-						System.out.println("rangeText : " + rangeText);
-						System.out.println("caretRange : " + caretRange);
-						//System.out.println("caretRangePosition : " + caretRangePosition);
-						System.out.println("caretPosition : " + caretPosition);
-
-						textArea.replaceRange(str, caretRange, caretPosition);
-					}
-					return true;
-				}else{
-					if(!fileSavedCheck){
-						int closeCheck = JOptionPane.showConfirmDialog(this.textEditor, saveCheckMsg,
-							"caution", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-
-						if(closeCheck == JOptionPane.YES_OPTION){
-							saveFile(saveMode);
-						}else if(closeCheck == JOptionPane.CANCEL_OPTION){
-							return false;
-						}
-						fileSavedCheck = true;
-					}
-					Transferable transferble = support.getTransferable();
-
-					Object obj = transferble.getTransferData(DataFlavor.javaFileListFlavor);
-					List list = (List)obj;
-					openFile(list.get(0).toString());
-					return true;			
-			}catch(UnsupportedFlavorException error){
-				return false;
-			}catch(IOException error){
-				return false;
-			}
-		}
-
-		@Override
-		protected void exportDone(JComponent c, Transferable data, int action) {
-			//System.out.println("Jcomp : " + c);
-			//System.out.priTransferable transferble = support.getTransferable();
-			//System.out.println("action : " + action);
-		}
-	}
-*/
 }
