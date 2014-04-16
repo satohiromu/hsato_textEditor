@@ -53,7 +53,7 @@ import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 import org.mozilla.universalchardet.UniversalDetector;
 
-public class TextEditor extends JFrame implements ActionListener, CaretListener{
+public class TextEditorV2 extends JFrame implements ActionListener, CaretListener{
 
 	private JTextArea textArea;
 	private JTextField textField;
@@ -76,7 +76,7 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 	private Pattern p = null;
 
 	// Constructor
-	TextEditor(){
+	TextEditorV2(){
 //		setTitle(textTitle + " - TextEditor");
 //		setFrameTitle(textTitle);
 		setSize(640, 480);
@@ -94,20 +94,24 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 	// create search dialog
 	public void setSearchDialog(){
 		searchDialog = new JDialog(this, "Search", true);
-		searchDialog.setBounds(250,100,300,200);
+		searchDialog.setSize(280,180);
+		searchDialog.setLocationRelativeTo(null);
+		searchDialog.setResizable(false);
 		
 		JPanel panel = new JPanel();
-		JLabel label = new JLabel("検索文字列 : ");
+		//JLabel label = new JLabel("検索文字列 : ");
 		textField = new JTextField(20);
-		JButton searchButton = new JButton("検索");
-		JButton cancelButton = new JButton("キャンセル");
+		JButton searchButton = new JButton("search");
+		JButton cancelButton = new JButton("cancel");
 		exprHandle = new JCheckBox("正規表現を使う");
 		upperOrLowerHandle = new JCheckBox("大文字・小文字を同一視");
 
+		textField.setActionCommand("Search_run");
 		searchButton.setActionCommand("Search_run");
 		cancelButton.setActionCommand("SearchDialog_hide");
 		
 		// add search event
+		textField.addActionListener(this);
 		searchButton.addActionListener(this);
 
 		// add search cancel event
@@ -415,6 +419,7 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 		}
 	}
 
+	// word search
 	public void searchRun(){
 		String textF = textField.getText();
 		String textA = textArea.getText();
@@ -501,9 +506,9 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 			int start = m.start();
 			int end = m.end();
 
-			textArea.requestFocusInWindow(); // フォーカスをテキストフィールドに置かなくては駄目だった
+			textArea.requestFocusInWindow();
 			textArea.select(start, end);
-		}else{
+		}else{ //最後まで検索後、最初の行に戻って再検索する
 			caretPosition = 0;
 			if(m.find(caretPosition)){
 				int start = m.start();
@@ -512,20 +517,16 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 				textArea.requestFocusInWindow();
 				textArea.select(start, end);
 			}else{
-
 				//m.reset();
 				//matcher = null;
 				System.out.println("not match");
-
-				//caretPosition = 0;
 			}
 		}
 	}
 
-
 	// main
 	public static void main(String[] args){
-		TextEditor textEditor = new TextEditor();
+		TextEditorV2 textEditor = new TextEditorV2();
 		textEditor.setVisible(true);
 	}
 
@@ -553,9 +554,9 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 
 	// file drop event
 	public class MyDropEvent extends DropTarget{
-		TextEditor textEditor;
+		TextEditorV2 textEditor;
 
-		MyDropEvent(TextEditor textEditor){
+		MyDropEvent(TextEditorV2 textEditor){
 			this.textEditor = textEditor;
 		}
 
@@ -588,12 +589,12 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 		}
 	}
 
-	// 正規表現使用チェック
+	// expr use check
 	public class myExprCheck implements ActionListener{
 		public void actionPerformed(ActionEvent event){
-			if(exprHandle.isSelected()){ // 正規表現を使う
+			if(exprHandle.isSelected()){ // expr use
 				patternFlags = patternFlags -  Pattern.LITERAL;
-			}else{ // 正規表現を使わない
+			}else{ // expr not use
 				patternFlags = patternFlags +  Pattern.LITERAL;
 			}
 			matcher = null;
@@ -602,13 +603,13 @@ public class TextEditor extends JFrame implements ActionListener, CaretListener{
 		}
 	}
 
-	// 大文字・小文字区別チェック
+	// upper or lower word equate setting
 	public class myUpperOrLowerCheck implements ActionListener{
 		public void actionPerformed(ActionEvent event){
 			
-			if(upperOrLowerHandle.isSelected()){ // 大文字小文字を同一視
+			if(upperOrLowerHandle.isSelected()){ // equate
 				patternFlags = patternFlags +  Pattern.CASE_INSENSITIVE;
-			}else{ // 大文字小文字を区別
+			}else{ // not equate
 				patternFlags = patternFlags -  Pattern.CASE_INSENSITIVE;
 			}
 			matcher = null;
